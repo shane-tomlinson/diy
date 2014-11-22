@@ -18,7 +18,7 @@ module.exports = function (grunt) {
         atBegin: true
       },
       files: ['Gruntfile.js', 'src/**/*.js', 'tests/**/*.js'],
-      tasks: ['requirejs:debug', 'test']
+      tasks: ['test']
     }
   });
 };

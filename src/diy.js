@@ -10,6 +10,11 @@ define(function(require,exports,module){
 
   function DIY(depList) {
     this._depList = depList;
+    for (var depName in depList) {
+      var visited = [ depName ];
+      var childDeps = depList[depName].deps;
+      checkDependencies(depList, childDeps, visited);
+    }
   }
 
   DIY.prototype = {
@@ -43,6 +48,28 @@ define(function(require,exports,module){
     });
 
     return target;
+  }
+
+  function checkDependencies(allDeps, depList, visited) {
+    visited = visited || [];
+
+    for (var depName in depList) {
+      var depType = depList[depName];
+      if (visited.indexOf(depType) > -1) {
+        throw new Error('circular dependency');
+      }
+
+      var childDep = allDeps[depType];
+      if (! childDep) {
+        throw new Error('missing configuration for ' + depType);
+      }
+
+      visited.push(depType);
+
+      checkDependencies(allDeps, allDeps[depType].deps, visited);
+
+      visited.pop(depType);
+    }
   }
 
   module.exports = DIY;
