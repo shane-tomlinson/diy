@@ -1,0 +1,32 @@
+{
+  "name": "diy",
+  "version": "0.0.0",
+  "authors": [
+    "Shane Tomlinson <stomlinson@mozilla.com>"
+  ],
+  "description": "Do-It-Yourself Dependency-Injection",
+  "moduleType": [
+    "amd",
+    "globals",
+    "node"
+  ],
+  "keywords": [
+    "dependency",
+    "injection"
+  ],
+  "license": "MPL 2.0",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "components",
+    "test",
+    "tests"
+  ],
+  "devDependencies": {
+    "requirejs": "~2.1.15",
+    "almond": "~0.3.0",
+    "chai": "~1.10.0",
+    "jasmine": "~2.1.2"
+  }
+}
