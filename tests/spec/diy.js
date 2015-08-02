@@ -3,8 +3,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 define([
-  'src/diy'
+  '../../src/diy'
 ], function (DIY) {
+
+  var expect = chai.expect;
+  var assert = chai.assert;
 
   function Leaf(config) {
     this.field = config.field;
@@ -15,6 +18,21 @@ define([
     this.leaf2 = config.leaf2;
     this.root_field = config.root_field;
   }
+
+  function Async(config) {
+    this.field = config.field;
+  }
+  Async.prototype = {
+    asyncInit: function () {
+      var self = this;
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          self.setByInitializer = 'initialized';
+          resolve(true);
+        }, 100);
+      });
+    }
+  };
 
   describe('diy', function () {
     describe('create', function () {
@@ -29,9 +47,31 @@ define([
         };
 
         var diy = new DIY(depList);
-        var leaf = diy.create('leaf');
-        expect(leaf instanceof Leaf).toBe(true);
-        expect(leaf.field).toBe('value');
+        return diy.create('leaf')
+          .then(function (leaf) {
+            assert.isTrue(leaf instanceof Leaf);
+            assert.equal(leaf.field, 'value');
+          });
+      });
+
+      it('can call an async initializer', function () {
+        var depList = {
+          async: {
+            constructor: Async,
+            initialize: 'asyncInit',
+            config: {
+              field: 'value'
+            }
+          }
+        };
+
+        var diy = new DIY(depList);
+        return diy.create('async')
+          .then(function (async) {
+            assert.isTrue(async instanceof Async);
+            assert.equal(async.field, 'value');
+            assert.equal(async.setByInitializer, 'initialized');
+          });
       });
 
       it('can create an object with multiple dependencies', function () {
@@ -58,13 +98,13 @@ define([
         };
 
         var diy = new DIY(depList);
-        var root = diy.create('root');
-
-        expect(root instanceof Parent).toBe(true);
-        expect(root.leaf1 instanceof Leaf).toBe(true);
-        expect(root.leaf2 instanceof Leaf).toBe(true);
-        expect(root.leaf1).not.toEqual(root.leaf2);
-        expect(root.root_field).toEqual('value');
+        return diy.create('root').then(function (root) {
+          assert.isTrue(root instanceof Parent);
+          assert.isTrue(root.leaf1 instanceof Leaf);
+          assert.isTrue(root.leaf2 instanceof Leaf);
+          assert.notEqual(root.leaf1, root.leaf2);
+          assert.equal(root.root_field, 'value');
+        });
       });
 
       it('can re-use instantiated objects', function () {
@@ -84,26 +124,22 @@ define([
               leaf: 'leaf'
             }
           }
-        }
+        };
 
         var diy = new DIY(depList);
-        var node1 = diy.create('node1');
-        var node2 = diy.create('node2');
-
-        expect(node1.leaf).toBe(node2.leaf);
+        return Promise.all([
+          diy.create('node1'),
+          diy.create('node2')
+        ]).then(function (deps) {
+          assert.deepEqual(deps[0], deps[1]);
+        });
       });
 
       describe('detect circular dependencies', function () {
         function detectCircularDeps(depList) {
-          var err;
-          try {
+          assert.throws(function () {
             var diy = new DIY(depList);
-          } catch(e) {
-            err = e;
-          } finally {
-            expect(err.message).toBe('circular dependency');
-            expect(diy).toBeUndefined();
-          }
+          }, 'circular dependency');
         }
 
         it('errors on a node that depends on itself', function () {
@@ -165,5 +201,7 @@ define([
       });
     });
   });
+
+  mocha.run();
 });
 

@@ -21,19 +21,41 @@ define(function(require,exports,module){
     create: function (depName) {
       var depConfig = this._depList[depName];
       if (! depConfig) {
-        throw new Error(depName + ' is not configured');
+        return Promise.reject(new Error(depName + ' is not configured'));
       }
 
       if (depConfig.instance) {
+        // depConfig.instance is a promise, just return it, it'll be resolved.
         return depConfig.instance;
       }
 
       var config = extend({}, depConfig.config);
-      for (var childDepName in depConfig.deps) {
-        config[childDepName] = this.create(depConfig.deps[childDepName]);
-      }
+      var depNames = Object.keys(depConfig.deps || {});
+      var self = this;
 
-      depConfig.instance = new depConfig.constructor(config);
+      // return the depConfig.instance promise so that multiple create's can
+      // be called concurrently without any interference. Only one instance
+      // will be created.
+      depConfig.instance = Promise.all(depNames.map(function (depName) {
+        return self.create(depConfig.deps[depName])
+          .then(function (dep) {
+            config[depName] = dep;
+          });
+      }))
+      .then(function () {
+        var instance = new depConfig.constructor(config);
+
+        if (! depConfig.initialize) {
+          return instance;
+        }
+
+        return Promise.resolve().then(function (resolve) {
+            return instance[depConfig.initialize]();
+        }).then(function () {
+          return instance;
+        });
+      });
+
       return depConfig.instance;
     }
   };
