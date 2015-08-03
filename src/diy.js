@@ -25,8 +25,7 @@ define(function(require,exports,module){
       }
 
       if (depConfig.instance) {
-        // depConfig.instance is a promise, just return it, it'll be resolved.
-        return depConfig.instance;
+        return Promise.resolve(depConfig.instance);
       }
 
       var config = extend({}, depConfig.config);
@@ -43,8 +42,7 @@ define(function(require,exports,module){
           });
       }))
       .then(function () {
-        // allow the constructor to return a promise in case it needs
-        // to go fetch resources to complete its task
+        // allow the constructor to return a promise.
         return Promise.resolve(new depConfig.constructor(config));
       })
       .then(function (instance) {
@@ -52,7 +50,7 @@ define(function(require,exports,module){
           return instance;
         }
 
-        return Promise.resolve().then(function (resolve) {
+        return Promise.resolve().then(function () {
           return instance[depConfig.initialize]();
         }).then(function () {
           return instance;
@@ -80,8 +78,10 @@ define(function(require,exports,module){
 
     for (var depName in depList) {
       var depType = depList[depName];
-      if (visited.indexOf(depType) > -1) {
-        throw new Error('circular dependency');
+      var visitedIndex = visited.indexOf(depName);
+      if (visitedIndex > -1) {
+        var loopItems = visited.slice(visitedIndex).concat(depName);
+        throw new Error('circular dependency: ' + loopItems.reverse().join('->'));
       }
 
       var childDep = allDeps[depType];
@@ -89,7 +89,7 @@ define(function(require,exports,module){
         throw new Error('missing configuration for ' + depType);
       }
 
-      visited.push(depType);
+      visited.push(depName);
 
       checkDependencies(allDeps, allDeps[depType].deps, visited);
 
