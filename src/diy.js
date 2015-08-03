@@ -43,14 +43,17 @@ define(function(require,exports,module){
           });
       }))
       .then(function () {
-        var instance = new depConfig.constructor(config);
-
+        // allow the constructor to return a promise in case it needs
+        // to go fetch resources to complete its task
+        return Promise.resolve(new depConfig.constructor(config));
+      })
+      .then(function (instance) {
         if (! depConfig.initialize) {
           return instance;
         }
 
         return Promise.resolve().then(function (resolve) {
-            return instance[depConfig.initialize]();
+          return instance[depConfig.initialize]();
         }).then(function () {
           return instance;
         });
